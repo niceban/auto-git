@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # post-tool.sh — Test PASS detection + auto-commit threshold check
-# Hook: PostToolUse (Bash)
+# Hook: PostToolUse (Bash|Write)
 # stdin: tool result JSON
 # exit 0 always
 

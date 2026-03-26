@@ -33,11 +33,11 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "*",
+        "matcher": "Bash|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "${PLUGIN_DIR}/hooks/post-tool.sh"
+            "command": "BRANCH_AUTONOMOUS_DIR=$HOME/.branch-autonomous ${PLUGIN_DIR}/hooks/post-tool.sh"
           }
         ]
       }
