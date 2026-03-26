@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# stop.sh — Milestone detection + merge/tag confirmation (auto-commit moved to post-tool.sh)
-# Hook: Stop
+# stop.sh — Auto-commit threshold + milestone detection + merge/tag confirmation
+# Hook: Stop  (fires every time Claude finishes responding, user can input)
 # Location: ~/.claude/plugins/branch-autonomous/hooks/stop.sh
 
 set -euo pipefail
@@ -50,6 +50,29 @@ branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 if [[ "$branch" == "main" ]]; then
   echo "stop.sh: on main, skipping" >&2
   exit 0
+fi
+
+# ─── Auto-commit threshold check (fires every Stop = every Claude response) ──
+THRESHOLD_FILES=$(jq -r '.uncommitted_files_threshold // 5' "$CONFIG_FILE")
+THRESHOLD_LINES=$(jq -r '.uncommitted_lines_threshold // 100' "$CONFIG_FILE")
+AUTO_COMMIT_PREFIX=$(jq -r '.auto_commit_message_prefix // "checkpoint: auto-save"' "$CONFIG_FILE")
+
+uncommitted_files=$(git status --porcelain | wc -l | tr -d ' ')
+# Use diff HEAD to count ALL uncommitted changes (staged + unstaged)
+uncommitted_lines=$(git diff HEAD --stat 2>/dev/null | tail -1 | awk '{print $4}' | tr -d ' ' || echo "0")
+
+if [[ "$uncommitted_files" -ge "$THRESHOLD_FILES" ]] || \
+   [[ "${uncommitted_lines:-0}" -ge "$THRESHOLD_LINES" ]]; then
+  auto_msg="${AUTO_COMMIT_PREFIX} $(date +%Y%m%d-%H%M%S)"
+  git add -A && git commit -q -m "$auto_msg"
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  jq \
+    --arg now "$now" \
+    --arg msg "$auto_msg" \
+    '.last_commit_at = $now |
+     .last_commit_message = $msg' \
+    "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+  echo "stop.sh: auto-committed → $auto_msg"
 fi
 
 # ─── Milestone detection ───────────────────────────────────────────────────────
