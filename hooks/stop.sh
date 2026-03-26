@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-STATE_DIR="${BRANCH_AUTONOMOUS_DIR:-~/.claude/plugins/branch-autonomous}"
+STATE_DIR="${BRANCH_AUTONOMOUS_DIR:-$HOME/.claude/plugins/branch-autonomous}"
 STATE_FILE="$STATE_DIR/state.json"
 CONFIG_FILE="$STATE_DIR/config.json"
 LOCK_FILE="$STATE_DIR/.lock"
@@ -16,7 +16,7 @@ if command -v flock &>/dev/null; then
   flock -n 200 || { echo "stop.sh: already locked, skipping" >&2; exit 0; }
 else
   if [[ -f "$LOCK_FILE" ]]; then
-    local pid; pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+    pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
     if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
       echo "stop.sh: already locked (PID $pid), skipping" >&2
       exit 0

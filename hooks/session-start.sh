@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-STATE_DIR="${BRANCH_AUTONOMOUS_DIR:-~/.claude/plugins/branch-autonomous}"
+STATE_DIR="${BRANCH_AUTONOMOUS_DIR:-$HOME/.claude/plugins/branch-autonomous}"
 STATE_FILE="$STATE_DIR/state.json"
 CONFIG_FILE="$STATE_DIR/config.json"
 LOCK_FILE="$STATE_DIR/.lock"
