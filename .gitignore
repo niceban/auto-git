@@ -1,0 +1,9 @@
+# 旧版本归档（worktree-first-plugin）
+archive/
+
+# 本地调研过程文件（deep-now）
+.deep-now/
+
+# Hook 状态文件（运行时生成，不入库）
+/.branch-autonomous/state.json
+/.branch-autonomous/.lock
