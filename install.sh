@@ -16,7 +16,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_DIR="$HOME/.claude/plugins/branch-autonomous"
-HOOKS_JSON="$HOME/.claude/hooks/branch-autonomous/hooks.json"
+HOOKS_JSON="$PLUGIN_DIR/hooks/hooks.json"
 
 log()   { echo "[INFO] $*"; }
 die()   { echo "[ERROR] $*" >&2; exit 1; }
