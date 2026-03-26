@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # session-start.sh — Initialize state.json on SessionStart
 # Hook: session-start (async: false)
-# Location: ~/.branch-autonomous/hooks/session-start.sh
+# Location: ~/.claude/plugins/branch-autonomous/hooks/session-start.sh
 
 set -euo pipefail
 
-STATE_DIR="${BRANCH_AUTONOMOUS_DIR:-$HOME/.branch-autonomous}"
+STATE_DIR="${BRANCH_AUTONOMOUS_DIR:-~/.claude/plugins/branch-autonomous}"
 STATE_FILE="$STATE_DIR/state.json"
 CONFIG_FILE="$STATE_DIR/config.json"
 LOCK_FILE="$STATE_DIR/.lock"

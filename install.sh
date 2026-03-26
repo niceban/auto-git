@@ -37,10 +37,8 @@ mkdir -p "$(dirname "$HOOKS_JSON")"
 cp "$SCRIPT_DIR/hooks/"*.sh "$PLUGIN_DIR/hooks/"
 chmod +x "$PLUGIN_DIR/hooks/"*.sh
 
-# Copy config to state dir (scripts look in ~/.branch-autonomous/)
-STATE_DIR="$HOME/.branch-autonomous"
-mkdir -p "$STATE_DIR"
-cp "$SCRIPT_DIR/config.json" "$STATE_DIR/config.json"
+# Copy config to plugin dir
+cp "$SCRIPT_DIR/config.json" "$PLUGIN_DIR/config.json"
 
 # Copy manifest
 cp "$SCRIPT_DIR/manifest.json" "$PLUGIN_DIR/manifest.json"
@@ -76,5 +74,5 @@ echo "  exit && claude"
 echo ""
 echo "Plugin: $PLUGIN_DIR"
 echo "Hooks:  $HOOKS_JSON"
-echo "Config: $STATE_DIR/config.json"
+echo "Config: $PLUGIN_DIR/config.json"
 echo "========================================"

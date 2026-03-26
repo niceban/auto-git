@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # stop.sh — Milestone detection + merge/tag confirmation (auto-commit moved to post-tool.sh)
 # Hook: Stop
-# Location: ~/.branch-autonomous/hooks/stop.sh
+# Location: ~/.claude/plugins/branch-autonomous/hooks/stop.sh
 
 set -euo pipefail
 
-STATE_DIR="${BRANCH_AUTONOMOUS_DIR:-$HOME/.branch-autonomous}"
+STATE_DIR="${BRANCH_AUTONOMOUS_DIR:-~/.claude/plugins/branch-autonomous}"
 STATE_FILE="$STATE_DIR/state.json"
 CONFIG_FILE="$STATE_DIR/config.json"
 LOCK_FILE="$STATE_DIR/.lock"

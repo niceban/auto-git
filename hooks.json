@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "BRANCH_AUTONOMOUS_DIR=$HOME/.branch-autonomous ${PLUGIN_DIR}/hooks/post-tool.sh"
+            "command": "${PLUGIN_DIR}/hooks/post-tool.sh"
           }
         ]
       }
