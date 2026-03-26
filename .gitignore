@@ -2,6 +2,7 @@
 archive/
 
 # 本地调研过程文件（deep-now）
+.deep/
 .deep-now/
 
 # 运行时状态文件（由 hooks 自动生成，不入库）
