@@ -1,57 +1,67 @@
 {
-  "hooks": [
-    {
-      "event": "SessionStart",
-      "matcher": "",
-      "hook": {
-        "type": "script",
-        "path": "~/.branch-autonomous/hooks/session-start.sh"
+  "description": "Branch-Autonomous Git Workflow — milestone squash, auto-commit, test detection, guard-bash for main branch",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${PLUGIN_DIR}/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${PLUGIN_DIR}/hooks/guard-bash.sh"
+          }
+        ]
       },
-      "async": false
-    },
-    {
-      "event": "PreToolUse",
-      "matcher": "Bash",
-      "hook": {
-        "type": "script",
-        "path": "~/.branch-autonomous/hooks/guard-bash.sh"
-      },
-      "async": false
-    },
-    {
-      "event": "PreToolUse",
-      "matcher": "Bash",
-      "hook": {
-        "type": "script",
-        "path": "~/.branch-autonomous/hooks/pre-push.sh"
-      },
-      "async": false
-    },
-    {
-      "event": "PostToolUse",
-      "matcher": "Bash",
-      "hook": {
-        "type": "script",
-        "path": "~/.branch-autonomous/hooks/post-tool.sh"
-      },
-      "async": true
-    },
-    {
-      "event": "PostToolUseFailure",
-      "matcher": "Bash",
-      "hook": {
-        "type": "script",
-        "path": "~/.branch-autonomous/hooks/post-tool-fail.sh"
-      },
-      "async": true
-    },
-    {
-      "event": "Stop",
-      "hook": {
-        "type": "script",
-        "path": "~/.branch-autonomous/hooks/stop.sh"
-      },
-      "async": false
-    }
-  ]
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${PLUGIN_DIR}/hooks/pre-push.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${PLUGIN_DIR}/hooks/post-tool.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${PLUGIN_DIR}/hooks/post-tool-fail.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${PLUGIN_DIR}/hooks/stop.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

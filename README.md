@@ -5,26 +5,40 @@ Hook-driven branch-only Git workflow for Claude Code. No worktrees — all devel
 ## 安装
 
 ```bash
-# 1. 克隆仓库到 ~/.branch-autonomous/
-git clone https://github.com/niceban/auto-git.git ~/.branch-autonomous
-
-# 2. 注册 hooks（路径使用 ~ 自动展开）
-cp ~/.branch-autonomous/hooks.json ~/.claude/hooks/hooks.json
-
-# 3. 重启 Claude Code session 使 hooks 生效
+git clone https://github.com/niceban/auto-git.git
+cd auto-git
+bash install.sh
 ```
 
-安装后 hooks 工作目录：`~/.branch-autonomous/hooks/`
-配置注册在：`~/.claude/hooks/hooks.json`
+安装程序会自动：
+1. 复制插件到 `~/.claude/plugins/branch-autonomous/`
+2. 注册 hooks 到 `~/.claude/hooks/branch-autonomous/hooks.json`（Claude Code 自动发现）
+3. 验证所有脚本
+
+**重启 Claude Code** 使 hooks 生效：
+```bash
+exit && claude
+```
+
+## 卸载
+
+```bash
+rm -rf ~/.claude/plugins/branch-autonomous
+rm -f  ~/.claude/hooks/branch-autonomous/hooks.json
+```
 
 ## 工作流程
 
 ```
-SessionStart → session-start.sh（初始化 state.json）
+SessionStart
+    ↓
+session-start.sh（初始化 state.json）
     ↓
 用户写代码 + 运行测试
     ↓
-post-tool.sh — 检测测试 PASS/FAIL
+post-tool.sh — 检测测试 PASS
+post-tool-fail.sh — 检测测试 FAIL
+    ↓
 stop.sh — 阈值自动提交（≥5个未提交文件 或 ≥100行变更）
     ↓
 【Milestone 触发】→ 用户确认 squash 消息
@@ -39,22 +53,22 @@ stop.sh — merge + tag + push + 删除分支
 ## 文件结构
 
 ```
-~/.branch-autonomous/
-├── config.json         # 阈值配置（可自定义）
-├── state.json          # 运行时状态（自动生成）
+~/.claude/plugins/branch-autonomous/
+├── manifest.json          # 插件清单
+├── config.json           # 阈值配置（可自定义）
 └── hooks/
-    ├── session-start.sh
-    ├── guard-bash.sh    # 阻止 main 分支危险操作
-    ├── pre-push.sh      # squash + force-push
-    ├── post-tool.sh      # 测试 PASS 检测
-    ├── post-tool-fail.sh # 测试 FAIL 检测
-    └── stop.sh           # auto-commit + milestone + merge
+    ├── session-start.sh  # SessionStart 初始化
+    ├── guard-bash.sh      # main 分支危险命令拦截
+    ├── pre-push.sh       # squash + force-push
+    ├── post-tool.sh       # 测试 PASS 检测
+    ├── post-tool-fail.sh  # 测试 FAIL 检测
+    └── stop.sh            # auto-commit + milestone + merge
 
-~/.claude/hooks/
-└── hooks.json          # Claude Code hook 注册清单
+~/.claude/hooks/branch-autonomous/
+└── hooks.json            # Claude Code 自动发现
 ```
 
-## 阈值配置（~/.branch-autonomous/config.json）
+## 配置（config.json）
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -65,31 +79,25 @@ stop.sh — merge + tag + push + 删除分支
 | `merge_delete_branch` | true | merge 后删除分支 |
 | `release_tag_prefix` | `v` | tag 前缀 |
 
-## 危险命令防护（guard-bash）
+## guard-bash 防护规则（main 分支）
 
-main 分支上阻止：
 - 文件重定向写入（`>`, `>>`）
 - `git push` 到 main/master
 - `git push --force`（不含 `--force-with-lease`）
 - `git reset --hard`
 - `git clean -x / -X`
-- 删除 main/master
+- 删除 main/master 分支
 - merge/rebase onto main/master
 - refspec push `HEAD:refs/heads/main`
 
 ## 两条人工交互点
 
-1. **Milestone squash 确认** — `feat:`/`fix:` commit 或 10+ commits 后
-2. **Merge + Release tag 确认** — squash push 成功后
+1. **Milestone squash 确认** — `feat:`/`fix:` commit 或 10+ commits 后，测试通过时触发
+2. **Merge + Release tag 确认** — squash push 成功后触发
 
-## 本地开发
+## 本地测试
 
 ```bash
-cd ~/.branch-autonomous
-
-# 测试 hooks
-bash test-hooks.sh          # 70 tests, 0 failures
-
-# 手动触发 session-start
-bash hooks/session-start.sh
+cd ~/.claude/plugins/branch-autonomous
+bash test-hooks.sh   # 70 tests, 0 failures
 ```

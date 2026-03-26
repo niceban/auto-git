@@ -1,0 +1,6 @@
+{
+  "name": "branch-autonomous",
+  "description": "Hook-driven branch-only Git workflow — milestone squash, auto-commit, test detection. No worktrees.",
+  "version": "1.0.0",
+  "installLocation": "user"
+}
