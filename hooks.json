@@ -1,0 +1,57 @@
+{
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "matcher": "",
+      "hook": {
+        "type": "script",
+        "path": "/Users/c/.branch-autonomous/hooks/session-start.sh"
+      },
+      "async": false
+    },
+    {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "hook": {
+        "type": "script",
+        "path": "/Users/c/.branch-autonomous/hooks/guard-bash.sh"
+      },
+      "async": false
+    },
+    {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "hook": {
+        "type": "script",
+        "path": "/Users/c/.branch-autonomous/hooks/pre-push.sh"
+      },
+      "async": false
+    },
+    {
+      "event": "PostToolUse",
+      "matcher": "Bash",
+      "hook": {
+        "type": "script",
+        "path": "/Users/c/.branch-autonomous/hooks/post-tool.sh"
+      },
+      "async": true
+    },
+    {
+      "event": "PostToolUseFailure",
+      "matcher": "Bash",
+      "hook": {
+        "type": "script",
+        "path": "/Users/c/.branch-autonomous/hooks/post-tool-fail.sh"
+      },
+      "async": true
+    },
+    {
+      "event": "Stop",
+      "hook": {
+        "type": "script",
+        "path": "/Users/c/.branch-autonomous/hooks/stop.sh"
+      },
+      "async": false
+    }
+  ]
+}
