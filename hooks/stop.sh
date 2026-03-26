@@ -34,19 +34,66 @@ fi
 
 MILESTONE_COMMITS=$(jq -r '.milestone_commits_threshold // 10' "$CONFIG_FILE")
 
-# ─── Load state ───────────────────────────────────────────────────────────────
-if [[ ! -f "$STATE_FILE" ]]; then
-  echo "stop.sh: state.json not found, skipping" >&2
-  exit 0
-fi
-
+# ─── Detect project ───────────────────────────────────────────────────────────
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 [[ ! -d "$PROJECT_DIR/.git" ]] && exit 0
 
 cd "$PROJECT_DIR"
 
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+# ─── Auto-initialize state.json if missing (no restart needed) ───────────────
+if [[ ! -f "$STATE_FILE" ]]; then
+  echo "stop.sh: state.json missing, auto-initializing for branch=$branch..."
+  session_id="${CLAUDE_SESSION_ID:-session-$(date +%s)}"
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  branch_type="other"
+  [[ "$branch" == feature/* ]] && branch_type="feature"
+  [[ "$branch" == fix/* ]]     && branch_type="fix"
+  [[ "$branch" == hotfix/* ]]   && branch_type="hotfix"
+
+  last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+  commits_since_tag=$([[ -n "$last_tag" ]] && git rev-list --count HEAD ^"$last_tag" 2>/dev/null || echo "0")
+
+  last_commit_at="$now"
+  last_commit_message=""
+  if git rev-parse HEAD &>/dev/null; then
+    last_commit_at=$(git log -1 --format="%aI" 2>/dev/null | head -1 || echo "$now")
+    last_commit_message=$(git log -1 --format="%s" 2>/dev/null | head -1 || echo "")
+  fi
+
+  jq -n \
+    --arg branch "$branch" \
+    --arg session_id "$session_id" \
+    --arg branch_type "$branch_type" \
+    --arg now "$now" \
+    --arg last_commit_at "$last_commit_at" \
+    --arg last_commit_message "$last_commit_message" \
+    --argjson commits_since_tag "$commits_since_tag" \
+    '{
+      version: "3.0",
+      session_id: $session_id,
+      branch: $branch,
+      branch_type: $branch_type,
+      test_passed: false,
+      test_passed_at: null,
+      test_failed_at: null,
+      uncommitted_files: 0,
+      uncommitted_lines: 0,
+      last_commit_at: $last_commit_at,
+      last_commit_message: $last_commit_message,
+      milestone: false,
+      milestone_reason: null,
+      awaiting_squash_push: false,
+      awaiting_merge_confirmation: false,
+      commits_since_last_tag: $commits_since_tag,
+      created_at: $now
+    }' > "$STATE_FILE"
+  echo "stop.sh: state initialized → $STATE_FILE"
+fi
+
 # ─── Guard: must not be on main ──────────────────────────────────────────────
-branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 if [[ "$branch" == "main" ]]; then
   echo "stop.sh: on main, skipping" >&2
   exit 0
