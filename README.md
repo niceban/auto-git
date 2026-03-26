@@ -36,10 +36,8 @@ session-start.sh（初始化 state.json）
     ↓
 用户写代码 + 运行测试
     ↓
-post-tool.sh — 检测测试 PASS
+post-tool.sh — 检测测试 PASS + 阈值自动提交（≥5个未提交文件 或 ≥100行变更）
 post-tool-fail.sh — 检测测试 FAIL
-    ↓
-stop.sh — 阈值自动提交（≥5个未提交文件 或 ≥100行变更）
     ↓
 【Milestone 触发】→ 用户确认 squash 消息
     ↓
@@ -62,7 +60,7 @@ stop.sh — merge + tag + push + 删除分支
     ├── pre-push.sh       # squash + force-push
     ├── post-tool.sh       # 测试 PASS 检测
     ├── post-tool-fail.sh  # 测试 FAIL 检测
-    └── stop.sh            # auto-commit + milestone + merge
+    └── stop.sh            # milestone + merge/tag confirmation
 
 ~/.claude/hooks/branch-autonomous/
 └── hooks.json            # Claude Code 自动发现

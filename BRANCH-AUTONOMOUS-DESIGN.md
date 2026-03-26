@@ -99,15 +99,12 @@ session-start.sh
 User writes code
     │
     ▼
-【Auto】post-tool.sh — Test Detection
+【Auto】post-tool.sh — Test Detection + Auto-Commit
     - Parse Bash output for test PASS patterns
     - On PASS: test_passed = true, test_passed_at = now
     - On FAIL: test_passed = false, test_failed_at = now
-    │
-    ▼
-【Auto】stop.sh — Threshold Auto-Commit
-    - If uncommitted_files > 5 OR uncommitted_lines > 100:
-    - git add -A && git commit -m "checkpoint: auto-save YYYYMMDD-HHMMSS"
+    - Threshold check: if uncommitted_files >= 5 OR uncommitted_lines >= 100:
+        → git add -A && git commit -m "checkpoint: auto-save YYYYMMDD-HHMMSS"
     │
     ▼
 【Auto】stop.sh — Milestone Detection
@@ -196,9 +193,9 @@ All hooks live at `~/.branch-autonomous/hooks/`, registered in `~/.claude/hooks/
 | session-start | SessionStart | session-start.sh | false | Initialize state.json |
 | guard-bash | PreToolUse (Bash) | guard-bash.sh | false | Block dangerous commands on main |
 | pre-push | PreToolUse (Bash) | pre-push.sh | false | Intercept push, execute squash |
-| post-tool | PostToolUse (Bash) | post-tool.sh | true | Detect test PASS/FAIL |
+| post-tool | PostToolUse (Bash) | post-tool.sh | true | Detect test PASS/FAIL + auto-commit threshold |
 | post-tool-fail | PostToolUseFailure (Bash) | post-tool-fail.sh | true | Detect test failure |
-| stop | Stop | stop.sh | false | Auto-commit + milestone + merge |
+| stop | Stop | stop.sh | false | Milestone detection + merge/tag confirmation |
 
 ### guard-bash.sh — Dangerous Commands on main
 

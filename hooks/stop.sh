@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stop.sh — Auto-commit + milestone detection + merge/tag confirmation
+# stop.sh — Milestone detection + merge/tag confirmation (auto-commit moved to post-tool.sh)
 # Hook: Stop
 # Location: ~/.branch-autonomous/hooks/stop.sh
 
@@ -32,10 +32,7 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   exit 0
 fi
 
-THRESHOLD_FILES=$(jq -r '.uncommitted_files_threshold // 5' "$CONFIG_FILE")
-THRESHOLD_LINES=$(jq -r '.uncommitted_lines_threshold // 100' "$CONFIG_FILE")
 MILESTONE_COMMITS=$(jq -r '.milestone_commits_threshold // 10' "$CONFIG_FILE")
-AUTO_COMMIT_PREFIX=$(jq -r '.auto_commit_message_prefix // "checkpoint: auto-save"' "$CONFIG_FILE")
 
 # ─── Load state ───────────────────────────────────────────────────────────────
 if [[ ! -f "$STATE_FILE" ]]; then
@@ -53,37 +50,6 @@ branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 if [[ "$branch" == "main" ]]; then
   echo "stop.sh: on main, skipping" >&2
   exit 0
-fi
-
-# ─── Update uncommitted counts ─────────────────────────────────────────────────
-uncommitted_files=$(git status --porcelain | wc -l | tr -d ' ')
-uncommitted_lines=$(git diff --stat 2>/dev/null | tail -1 | awk '{print $4}' | tr -d ' ' || echo "0")
-
-# Update state with uncommitted counts
-jq \
-  --argjson uncommitted_files "$uncommitted_files" \
-  --argjson uncommitted_lines "${uncommitted_lines:-0}" \
-  '.uncommitted_files = $uncommitted_files |
-   .uncommitted_lines = $uncommitted_lines' \
-  "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
-
-# ─── Auto-commit threshold check ──────────────────────────────────────────────
-if [[ "$uncommitted_files" -ge "$THRESHOLD_FILES" ]] || \
-   [[ "${uncommitted_lines:-0}" -ge "$THRESHOLD_LINES" ]]; then
-  auto_msg="${AUTO_COMMIT_PREFIX} $(date +%Y%m%d-%H%M%S)"
-  git add -A && git commit -q -m "$auto_msg"
-  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  jq \
-    --arg now "$now" \
-    --arg msg "$auto_msg" \
-    --argjson uncommitted_files 0 \
-    --argjson uncommitted_lines 0 \
-    '.last_commit_at = $now |
-     .last_commit_message = $msg |
-     .uncommitted_files = $uncommitted_files |
-     .uncommitted_lines = $uncommitted_lines' \
-    "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
-  echo "stop.sh: auto-committed → $auto_msg"
 fi
 
 # ─── Milestone detection ───────────────────────────────────────────────────────
