@@ -5,14 +5,17 @@ Hook-driven branch-only Git workflow for Claude Code. No worktrees — all devel
 ## 安装
 
 ```bash
-# 1. 克隆仓库
+# 1. 克隆仓库到 ~/.branch-autonomous/
 git clone https://github.com/niceban/auto-git.git ~/.branch-autonomous
 
-# 2. 注册 hooks
+# 2. 注册 hooks（路径使用 ~ 自动展开）
 cp ~/.branch-autonomous/hooks.json ~/.claude/hooks/hooks.json
 
 # 3. 重启 Claude Code session 使 hooks 生效
 ```
+
+安装后 hooks 工作目录：`~/.branch-autonomous/hooks/`
+配置注册在：`~/.claude/hooks/hooks.json`
 
 ## 工作流程
 
@@ -37,7 +40,7 @@ stop.sh — merge + tag + push + 删除分支
 
 ```
 ~/.branch-autonomous/
-├── config.json         # 阈值配置
+├── config.json         # 阈值配置（可自定义）
 ├── state.json          # 运行时状态（自动生成）
 └── hooks/
     ├── session-start.sh
@@ -47,10 +50,11 @@ stop.sh — merge + tag + push + 删除分支
     ├── post-tool-fail.sh # 测试 FAIL 检测
     └── stop.sh           # auto-commit + milestone + merge
 
-hooks.json              # Claude Code hooks 注册（复制到 ~/.claude/hooks/）
+~/.claude/hooks/
+└── hooks.json          # Claude Code hook 注册清单
 ```
 
-## 阈值配置（config.json）
+## 阈值配置（~/.branch-autonomous/config.json）
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -81,6 +85,8 @@ main 分支上阻止：
 ## 本地开发
 
 ```bash
+cd ~/.branch-autonomous
+
 # 测试 hooks
 bash test-hooks.sh          # 70 tests, 0 failures
 
