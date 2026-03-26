@@ -101,7 +101,7 @@ fi
 
 # ─── Auto-commit threshold check (fires every Stop = every Claude response) ──
 THRESHOLD_FILES=$(jq -r '.uncommitted_files_threshold // 5' "$CONFIG_FILE")
-THRESHOLD_LINES=$(jq -r '.uncommitted_lines_threshold // 100' "$CONFIG_FILE")
+THRESHOLD_LINES=$(jq -r '.uncommitted_lines_threshold // 1000' "$CONFIG_FILE")
 AUTO_COMMIT_PREFIX=$(jq -r '.auto_commit_message_prefix // "checkpoint: auto-save"' "$CONFIG_FILE")
 
 uncommitted_files=$(git status --porcelain | wc -l | tr -d ' ')

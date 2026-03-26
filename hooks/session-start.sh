@@ -36,7 +36,7 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   cat > "$CONFIG_FILE" << 'EOF'
 {
   "uncommitted_files_threshold": 5,
-  "uncommitted_lines_threshold": 100,
+  "uncommitted_lines_threshold": 1000,
   "milestone_commits_threshold": 10,
   "auto_commit_message_prefix": "checkpoint: auto-save",
   "merge_delete_branch": true,
