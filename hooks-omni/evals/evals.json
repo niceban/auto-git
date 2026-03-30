@@ -1,0 +1,24 @@
+{
+  "skill_name": "hooks-omni",
+  "description": "Branch-autonomous Git workflow hooks for Claude Code",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我在 feature/search 分支上开发，已经 commit 了 5 个 commits，最近一个 commit 是 'feat: add search indexing'。运行 stop hook 应该检测到什么 milestone？",
+      "expected_output": "应该检测到 conventional commit trigger，因为最后一个 commit 匹配 ^feat: 模式",
+      "files": ["hooks-omni/stop.sh", "hooks-omni/state-lib.sh"]
+    },
+    {
+      "id": 2,
+      "prompt": "用户在 session 中说 '搞定了'，semantic-trigger.sh 应该做什么？它会输出什么？",
+      "expected_output": "semantic-trigger.sh 应该完全静默（无 stdout 输出），只更新 state.json 设置 semantic_intent=true 和 milestone_pending=true",
+      "files": ["hooks-omni/semantic-trigger.sh"]
+    },
+    {
+      "id": 3,
+      "prompt": "用户在 main 分支上尝试运行 'git push origin main'，guard-bash.sh 应该怎么处理？",
+      "expected_output": "guard-bash.sh 应该阻止这个命令，因为推送到 main 是危险操作。应该返回 hookSpecificOutput with permissionDecision: deny",
+      "files": ["hooks-omni/guard-bash.sh"]
+    }
+  ]
+}

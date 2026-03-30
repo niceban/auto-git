@@ -1,7 +1,7 @@
 # Branch-Only Autonomous Git Workflow
 
 **Date**: 2026-03-26
-**Status**: Design — not yet implemented
+**Status**: Implemented as `hooks-omni/` (v2.0 with semantic-trigger)
 **Supersedes**: worktree-first-plugin (archived at `../archive/worktree-first-plugin-20260326/`)
 
 ---
@@ -139,11 +139,13 @@ User writes code
 
 ## 5. State Management
 
-### state.json — lives at `~/.branch-autonomous/state.json`
+### state.json — lives at `$HOME/.claude/plugins/branch-autonomous/state.json`
+
+> **v2.0 变更**：State version 从 3.0 升级到 4.0，新增 `semantic_intent`、`milestone_pending_*`、`backup_branch` 等字段。
 
 ```json
 {
-  "version": "3.0",
+  "version": "4.0",
   "session_id": "12345",
   "branch": "feature/search",
   "branch_type": "feature",
@@ -159,7 +161,18 @@ User writes code
   "awaiting_squash_push": false,
   "awaiting_merge_confirmation": false,
   "commits_since_last_tag": 0,
-  "created_at": "2026-03-26T00:00:00Z"
+  "created_at": "2026-03-26T00:00:00Z",
+  "semantic_intent": false,
+  "semantic_intent_reason": null,
+  "last_prompt": "",
+  "last_intent_at": null,
+  "milestone_pending": false,
+  "milestone_pending_reason": null,
+  "milestone_pending_squash_suggestion": null,
+  "milestone_pending_branch": null,
+  "milestone_pending_commits": 0,
+  "backup_branch": null,
+  "backup_created_at": null
 }
 ```
 
@@ -169,12 +182,14 @@ User writes code
 - `false` — cleared by pre-push.sh when squash-push succeeds
 - On squash-push failure: remains `true` (retry on next push)
 
-### config.json — lives at `~/.branch-autonomous/config.json`
+### config.json — lives at `$HOME/.claude/plugins/branch-autonomous/config.json`
+
+> **v2.0 变更**：`uncommitted_lines_threshold` 默认值从 100 调整为 1000。
 
 ```json
 {
   "uncommitted_files_threshold": 5,
-  "uncommitted_lines_threshold": 100,
+  "uncommitted_lines_threshold": 1000,
   "milestone_commits_threshold": 10,
   "auto_commit_message_prefix": "checkpoint: auto-save",
   "merge_delete_branch": true,
@@ -186,16 +201,31 @@ User writes code
 
 ## 6. Hook Architecture
 
-All hooks live at `~/.branch-autonomous/hooks/`, registered in `~/.claude/hooks/hooks.json`.
+> **v2.0 变更**：Hook 从 6 个增加到 7 个，新增 `semantic-trigger.sh` 用于监听用户语义意图。
 
-| Hook | Event | Script | Async | Purpose |
-|------|-------|--------|-------|---------|
-| session-start | SessionStart | session-start.sh | false | Initialize state.json |
-| guard-bash | PreToolUse (Bash) | guard-bash.sh | false | Block dangerous commands on main |
-| pre-push | PreToolUse (Bash) | pre-push.sh | false | Intercept push, execute squash |
-| post-tool | PostToolUse (Bash) | post-tool.sh | true | Detect test PASS/FAIL + auto-commit threshold |
-| post-tool-fail | PostToolUseFailure (Bash) | post-tool-fail.sh | true | Detect test failure |
-| stop | Stop | stop.sh | false | Milestone detection + merge/tag confirmation |
+All hooks live at `$HOME/.claude/plugins/branch-autonomous/hooks/`, registered in `manifest.json`.
+
+| Hook | Event | Matcher | Async | Purpose |
+|------|-------|---------|-------|---------|
+| session-start | SessionStart | — | false | Initialize state.json |
+| semantic-trigger | UserPromptSubmit | — | false | Detect user semantic intent (e.g., "搞定了", "done") — completely silent |
+| guard-bash | PreToolUse | Bash | false | Block dangerous commands on main |
+| pre-push | PreToolUse | Bash | false | Intercept push, execute squash |
+| post-tool | PostToolUse | Bash\|Write | true | Detect test PASS/FAIL + auto-commit threshold |
+| post-tool-fail | PostToolUseFailure | * | true | Detect test failure |
+| stop | Stop | — | false | Milestone detection + merge/tag confirmation |
+
+### semantic-trigger.sh — User Semantic Intent Detection (v2.0 New)
+
+**完全静默设计** — P0-3 修复：不向 stdout 输出任何内容，仅更新 state.json。
+
+**触发词 Tier 1（立即触发）**：
+- `v1`, `v2`, `v3`, `release`, `搞定`, `搞定了`, `完成了`, `测试通过`, `✓`, `封板`, `milestone`, `done`, `finished`, `complete`
+
+**触发词 Tier 2（强信号）**：
+- `差不多`, `快好了`, `感觉可以了`, `nearly done`, `almost done`, `almost there`, `good enough`
+
+**效果**：设置 `semantic_intent=true` + `milestone_pending=true`，让用户在自然表达时触发 milestone 确认。
 
 ### guard-bash.sh — Dangerous Commands on main
 
@@ -220,6 +250,8 @@ are architecturally incompatible; do not try to adapt the archived version.
 
 Located in `stop.sh`:
 
+> **v2.0 变更**：新增 Trigger 3 — semantic intent（来自 semantic-trigger.sh）
+
 ```bash
 # Trigger 1: commit count threshold (guard against no tags)
 last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -234,7 +266,8 @@ fi
 last_commit_msg=$(git log -1 --format="%s")
 echo "$last_commit_msg" | grep -qE "^(feat|fix|perf|ci):"
 
-# Must also have test_passed = true
+# Trigger 3: semantic intent (from semantic-trigger.sh)
+# semantic_intent == true → milestone_pending already set
 ```
 
 ---
@@ -256,42 +289,52 @@ The following were part of the archived worktree-first approach and are excluded
 
 ## 9. Implementation Checklist
 
-> **Architecture**: Entirely hook-driven. No external agent invocation during the workflow.
-> All 6 hooks are registered in `~/.claude/hooks/hooks.json`; no CLI tools, no MCP servers needed.
+> **v2.0 Architecture**: Entirely hook-driven. No external agent invocation during the workflow.
+> All 7 hooks are registered in `manifest.json`; no CLI tools, no MCP servers needed.
 
 **Batch 1 — State infrastructure** (all other hooks depend on this):
-- [ ] `~/.branch-autonomous/` directory + state.json + config.json
-- [ ] `~/.branch-autonomous/hooks/session-start.sh`
+- [x] `$HOME/.claude/plugins/branch-autonomous/` directory + state.json (v4.0) + config.json
+- [x] `$HOME/.claude/plugins/branch-autonomous/hooks/session-start.sh`
 
 **Batch 2 — Safety + detection** (parallel, no interdependencies):
-- [ ] `~/.branch-autonomous/hooks/guard-bash.sh` ← **complete rewrite**, do not adapt archived version
-- [ ] `~/.branch-autonomous/hooks/post-tool.sh`
-- [ ] `~/.branch-autonomous/hooks/post-tool-fail.sh`
+- [x] `$HOME/.claude/plugins/branch-autonomous/hooks/guard-bash.sh`
+- [x] `$HOME/.claude/plugins/branch-autonomous/hooks/post-tool.sh`
+- [x] `$HOME/.claude/plugins/branch-autonomous/hooks/post-tool-fail.sh`
 
-**Batch 3 — Core state machine** (depends on state.json existing):
-- [ ] `~/.branch-autonomous/hooks/stop.sh`
-- [ ] `~/.branch-autonomous/hooks/pre-push.sh` (with `.tool_input.command` fix)
+**Batch 3 — Semantic intent** (v2.0 new):
+- [x] `$HOME/.claude/plugins/branch-autonomous/hooks/semantic-trigger.sh`
+
+**Batch 4 — Core state machine** (depends on state.json existing):
+- [x] `$HOME/.claude/plugins/branch-autonomous/hooks/stop.sh`
+- [x] `$HOME/.claude/plugins/branch-autonomous/hooks/pre-push.sh` (with `.tool_input.command` fix)
 
 **Registration**:
-- [ ] `~/.claude/hooks/hooks.json` — register all 6 hooks
-- [ ] Remove old `~/.wf2-autonomous/` hooks from hooks.json
+- [x] `manifest.json` — register all 7 hooks in `hooks-omni/`
 
 ---
 
 ## 10. File Locations
 
+> **v2.0**：目录迁移到 `$HOME/.claude/plugins/branch-autonomous/`（原 `~/.branch-autonomous/` 已废弃）
+
 ```
-~/.branch-autonomous/
-├── state.json
+$HOME/.claude/plugins/branch-autonomous/
+├── state.json              # v4.0
 ├── config.json
+├── .lock                   # 进程锁
 └── hooks/
-    ├── session-start.sh
-    ├── guard-bash.sh
-    ├── pre-push.sh
-    ├── post-tool.sh
-    ├── post-tool-fail.sh
-    └── stop.sh
+    ├── logging.sh          # 共享日志库
+    ├── state-lib.sh        # 共享状态管理
+    ├── session-start.sh    # SessionStart
+    ├── semantic-trigger.sh # UserPromptSubmit (v2.0 新增)
+    ├── guard-bash.sh       # PreToolUse (Bash)
+    ├── pre-push.sh         # PreToolUse (Bash)
+    ├── post-tool.sh        # PostToolUse (Bash|Write)
+    ├── post-tool-fail.sh   # PostToolUseFailure (*)
+    └── stop.sh             # Stop
 ```
+
+**install.sh** 安装时将 `hooks-omni/` 复制到 `$HOME/.claude/plugins/branch-autonomous/`。
 
 ---
 
@@ -301,3 +344,20 @@ The following were part of the archived worktree-first approach and are excluded
 |-----|----------|-----|
 | pre-push.sh JSON path `.command` instead of `.tool_input.command` | pre-push.sh L33 (archived version L19) | Use `.tool_input.command` |
 | `git push origin HEAD:master` bypasses all hooks | guard-bash.sh | Add rule to block refspec push to main/master |
+
+---
+
+## 12. v2.0 Changelog
+
+> Design updated to reflect actual implementation in `hooks-omni/`.
+
+| Change | Description | Date |
+|--------|-------------|------|
+| **semantic-trigger.sh** | New 7th hook for user semantic intent detection | 2026-03-30 |
+| **State v4.0** | New fields: `semantic_intent`, `milestone_pending_*`, `backup_branch` | 2026-03-30 |
+| **Directory migration** | `~/.branch-autonomous/` → `$HOME/.claude/plugins/branch-autonomous/` | 2026-03-28 |
+| **PostToolUse Matcher** | Changed from `Bash` to `Bash\|Write` to cover Write tool | 2026-03-28 |
+| **uncommitted_lines_threshold** | Default changed from 100 to 1000 | 2026-03-30 |
+| **Shared libraries** | `logging.sh` and `state-lib.sh` extracted as common dependencies | 2026-03-30 |
+| **Backup branch** | `pre-push.sh` creates backup branch before squash | 2026-03-30 |
+| **manifest.json** | Hook registration via manifest.json instead of hooks.json | 2026-03-30 |
