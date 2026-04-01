@@ -1,6 +1,6 @@
 ---
 name: hooks-omni
-description: Branch-autonomous Git workflow hooks for Claude Code. Automates checkpoint commits, milestone squash, and merge-to-main with only two user confirmations. Use when working on feature branches and wanting autonomous git workflow — say "搞定"、"done", or push a conventional commit to trigger milestone. Not for users who prefer manual git control.
+description: Branch-autonomous Git workflow hooks for Claude Code. Automates checkpoint commits (on 5+ files or 1000+ lines), milestone squash, and merge-to-main with only two user confirmations. Use when working on feature branches and wanting autonomous git workflow — say "搞定"、"差不多"、"done", push a conventional commit (feat:), or accumulate 10+ commits to trigger milestone. Also: says "done" or "差不多" (Tier2) for semantic trigger. Not for users who prefer manual git control.
 ---
 
 # hooks-omni: Branch-Autonomous Git Workflow
@@ -205,3 +205,147 @@ $HOME/.claude/plugins/branch-autonomous/
 |---------|---------|
 | v1.0 | Initial 6-hook design |
 | v2.0 | +semantic-trigger.sh, state v4.0, $HOME/.claude/plugins/ path |
+
+---
+
+## 故障自救指南 (Fault Self-Rescue Guide)
+
+### State Corruption Recovery
+
+**Symptom**: `state.json` is invalid or corrupted
+
+**Recovery steps**:
+1. Delete the corrupted state file:
+   ```bash
+   rm $HOME/.claude/plugins/branch-autonomous/state.json
+   ```
+2. Restart Claude Code — session-start.sh will reinitialize with safe defaults
+
+**Prevention**: State updates use atomic flock locking to prevent corruption
+
+---
+
+### Lock Timeout Resolution
+
+**Symptom**: Hook hangs with message "waiting for lock..." or `.lock` file exists from crashed process
+
+**Recovery steps**:
+1. Check for stale lock files:
+   ```bash
+   ls -la $HOME/.claude/plugins/branch-autonomous/.lock
+   ```
+2. If the lock is stale (process no longer running), remove it:
+   ```bash
+   rm $HOME/.claude/plugins/branch-autonomous/.lock
+   ```
+
+**Prevention**: Locks have built-in TTL detection, but force-killing Claude Code may leave stale locks
+
+---
+
+### Hook Failures
+
+**Symptom**: Hook blocked a command incorrectly, or hook crashed
+
+**Debug steps**:
+1. Enable debug mode (see below)
+2. Check hook log: `$HOME/.claude/plugins/branch-autonomous/hooks.log`
+3. Run the blocked command manually to verify
+4. If hook is broken, reinstall:
+   ```bash
+   cd auto-git && bash install.sh
+   ```
+
+---
+
+## Common Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `deny: dangerous command on main` | guard-bash.sh blocked a risky command | Use feature branch instead of main |
+| `jq: invalid JSON` | hooks.json generation failed | Re-run install.sh, check manifest.json syntax |
+| `set -euo pipefail` error in hook | Hook has syntax error | Run `bash -n <hook>.sh` to diagnose |
+| `acquire_lock: timeout` | Another hook is holding the lock | Wait or remove stale .lock file |
+| `git push --force denied` | guard-bash.sh requires `--force-with-lease` | Use `git push --force-with-lease` instead |
+| `semantic-trigger: no output` | This is CORRECT behavior | semantic-trigger.sh is designed to be silent |
+
+---
+
+## Debug Mode
+
+**Enable verbose logging**:
+```bash
+# Set debug environment variable before starting Claude Code
+export HOOKS_OMNI_DEBUG=1
+
+# Or add to your shell profile (~/.zshrc or ~/.bashrc)
+echo 'export HOOKS_OMNI_DEBUG=1' >> ~/.zshrc
+```
+
+**What debug mode shows**:
+- Detailed hook execution traces in `hooks.log`
+- State update operations with before/after values
+- Lock acquisition/release events
+- Semantic trigger detection with matched keywords
+
+**Log location**: `$HOME/.claude/plugins/branch-autonomous/hooks.log`
+
+**Log rotation**: Automatic at ~1MB threshold
+
+---
+
+## FAQ
+
+**Q: Hooks are not firing at all**
+A: Verify hooks are registered:
+```bash
+cat ~/.claude/hooks/branch-autonomous/hooks.json | jq '.hooks | length'
+```
+Should show 7 hooks. If not, reinstall:
+```bash
+cd auto-git && bash install.sh
+```
+
+**Q: Semantic trigger ("搞定") not working**
+A: semantic-trigger.sh is completely silent — it only updates state.json. Check state.json:
+```bash
+cat $HOME/.claude/plugins/branch-autonomous/state.json | jq '.semantic_intent'
+```
+Should be `true` after saying "搞定".
+
+**Q: Auto-commit not triggering**
+A: Check thresholds in config.json:
+- `uncommitted_files_threshold`: default 5
+- `uncommitted_lines_threshold`: default 1000
+
+**Q: "waiting for lock" forever**
+A: Remove stale lock file:
+```bash
+rm -f $HOME/.claude/plugins/branch-autonomous/.lock
+```
+
+**Q: How to disable hooks temporarily**
+A: Uninstall the plugin:
+```bash
+rm -rf ~/.claude/plugins/branch-autonomous
+rm -f ~/.claude/hooks/branch-autonomous/hooks.json
+```
+Restart Claude Code to take effect.
+
+---
+
+## Verification Commands
+
+```bash
+# Count test cases in evals
+jq '.evals | length' hooks-omni/evals/evals.json
+
+# Run stress test
+cd hooks-omni/evals && bash stress-test.sh --sessions 100
+
+# Verify install
+bash install.sh 2>&1 | grep -E '(OK|FAILED|complete)'
+
+# Check SKILL.md sections
+grep -c '故障\|Troubleshoot\|FAQ\|Debug' hooks-omni/SKILL.md
+```
